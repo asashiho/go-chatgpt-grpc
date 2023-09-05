@@ -11,12 +11,13 @@ services:
     build:
       context: ./server
     container_name: go-grpc-server
-    network_mode: host
     ports:
       - "50051:50051"
     environment:
-      - OPENAI_KEY=your-openai-key-is-here
-
+      - AOAI_KEY=your-azureopenai-key
+      - AOAI_ENDPOINT=your-azureopenai-endpoint
+      - AOAI_VERSION=your-azureopenai-rest-version
+      - AOAI_DEPLOYNAME=your-azureopenai-deploy-name
 networks:
   go-net:
     driver: bridge

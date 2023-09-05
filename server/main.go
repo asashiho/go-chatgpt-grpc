@@ -32,8 +32,7 @@ func (s *server) Chat(stream chat.ChatService_ChatServer) error {
 		fmt.Printf("Received request: %s\n", req.Content)
 
 		aiReq := openai.ChatCompletionRequest{
-			Model:     openai.GPT3Dot5Turbo,
-			MaxTokens: 100,
+			Model: openai.GPT3Dot5Turbo,
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleUser,
@@ -64,7 +63,13 @@ func (s *server) Chat(stream chat.ChatService_ChatServer) error {
 				break
 			}
 
+			if len(aiRes.Choices) == 0 {
+				continue
+			}
+
 			res := &chat.Message{Content: aiRes.Choices[0].Delta.Content}
+			log.Printf(aiRes.Choices[0].Delta.Content)
+
 			if err := stream.Send(res); err != nil {
 				log.Printf("Failed to send to client: %v", err)
 				return err
@@ -79,9 +84,24 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	OPENAI_KEY := os.Getenv("OPENAI_KEY")
+	AOAI_KEY := os.Getenv("AOAI_KEY")
+	AOAI_ENDPOINT := os.Getenv("AOAI_ENDPOINT")
+	AOAI_VERSION := os.Getenv("AOAI_VERSION")
+	AOAI_DEPLOYNAME := os.Getenv("AOAI_DEPLOYNAME")
 
-	aiClient := openai.NewClient(OPENAI_KEY)
+	config := openai.DefaultAzureConfig(AOAI_KEY, AOAI_ENDPOINT)
+	config.APIVersion = AOAI_VERSION
+	config.AzureModelMapperFunc = func(model string) string {
+		modelmapper := map[string]string{
+			"gpt-3.5-turbo": AOAI_DEPLOYNAME,
+		}
+		if val, ok := modelmapper[model]; ok {
+			return val
+		}
+		return model
+	}
+
+	aiClient := openai.NewClientWithConfig(config)
 
 	s := grpc.NewServer()
 	chat.RegisterChatServiceServer(s, &server{
